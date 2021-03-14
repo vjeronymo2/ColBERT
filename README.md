@@ -1,3 +1,10 @@
+This branch has been merged into the main branch. Please use that instead.
+
+
+
+----
+----
+
 # ColBERT: Contextualized Late Interaction over BERT
 
 This is version 0.2.0 of the reference implementation of the SIGIR'20 paper **ColBERT: Efficient and Effective Passage Search via Contextualized Late Interaction over BERT**. This version is a near-complete rewrite with lots of additional functionality and considerably higher efficiency.

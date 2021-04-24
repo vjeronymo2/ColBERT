@@ -1,5 +1,3 @@
-import os
-import time
 import torch
 import queue
 import threading
@@ -10,27 +8,51 @@ from colbert.utils.runs import Run
 from colbert.modeling.inference import ModelInference
 from colbert.evaluation.ranking_logger import RankingLogger
 
-from colbert.utils.utils import print_message, flatten, zipstar
-from colbert.indexing.loaders import get_parts
+from colbert.utils.utils import print_message, flatten, zipstar, load_batch_backgrounds
+from colbert.indexing.loaders import get_parts, load_doclens
 from colbert.ranking.index_part import IndexPart
 
 MAX_DEPTH_LOGGED = 1000  # TODO: Use args.depth
 
 
-def prepare_ranges(index_path, dim, step, part_range):
+def get_pid_positions(args):
+    parts, _, _ = get_parts(args.index_path)
+
+    positions = [(offset, offset + args.step)
+                 for idx, offset in enumerate(range(0, len(parts), args.step))
+                 if idx % args.nranks == max(0, args.rank)]
+
+    return positions
+
+
+def get_pid_ranges(args, positions):
+    all_doclens = load_doclens(args.index_path, flatten=False)
+
+    Ranges = []
+    for offset, endpos in positions:
+        doc_offset = sum([len(part_doclens) for part_doclens in all_doclens[:offset]])
+        doc_endpos = sum([len(part_doclens) for part_doclens in all_doclens[:endpos]])
+        pids_range = range(doc_offset, doc_endpos)
+        Ranges.append(pids_range)
+
+    return Ranges
+
+
+def prepare_ranges(args):
+    index_path = args.index_path
+    dim = args.dim
+
     print_message("#> Launching a separate thread to load index parts asynchronously.")
-    parts, _, _ = get_parts(index_path)
+    positions = get_pid_positions(args)
 
-    positions = [(offset, offset + step) for offset in range(0, len(parts), step)]
+    assert args.part_range is None, "TODO: This is no longer supported (for now)"
 
-    if part_range is not None:
-        positions = positions[part_range.start: part_range.stop]
-
-    loaded_parts = queue.Queue(maxsize=2)
+    loaded_parts = queue.Queue(maxsize=0)
 
     def _loader_thread(index_path, dim, positions):
         for offset, endpos in positions:
-            index = IndexPart(index_path, dim=dim, part_range=range(offset, endpos), verbose=True)
+            index = IndexPart(args, index_path, part_range=range(offset, endpos),
+                              verbose=True, bsize=args.group_size)
             loaded_parts.put(index, block=True)
 
     thread = threading.Thread(target=_loader_thread, args=(index_path, dim, positions,))
@@ -72,7 +94,7 @@ def score_by_range(positions, loaded_parts, all_query_embeddings, all_query_rank
 
 
 def batch_rerank(args):
-    positions, loaded_parts, thread = prepare_ranges(args.index_path, args.dim, args.step, args.part_range)
+    positions, loaded_parts, thread = prepare_ranges(args)
 
     inference = ModelInference(args.colbert, amp=args.amp)
     queries, topK_pids = args.queries, args.topK_pids
@@ -101,7 +123,9 @@ def batch_rerank(args):
 
     ranking_logger = RankingLogger(Run.path, qrels=None, log_scores=args.log_scores)
 
-    with ranking_logger.context('ranking.tsv', also_save_annotations=False) as rlogger:
+    filename = 'ranking.tsv' if args.nranks <= 1 else f'ranking.r{args.rank}.tsv'
+
+    with ranking_logger.context(filename, also_save_annotations=False) as rlogger:
         with torch.no_grad():
             for query_index, qid in enumerate(queries):
                 if query_index % 1000 == 0:

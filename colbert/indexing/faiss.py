@@ -1,15 +1,13 @@
 import os
 import math
-import faiss
 import torch
-import numpy as np
 
 import threading
 import queue
 
 from colbert.utils.utils import print_message, grouper
-from colbert.indexing.loaders import get_parts
-from colbert.indexing.index_manager import load_index_part
+from colbert.indexing.loaders import get_parts, get_index_metadata
+from colbert.indexing.index_manager import load_index_part_raw
 from colbert.indexing.faiss_index import FaissIndex
 
 
@@ -25,7 +23,7 @@ def load_sample(samples_paths, sample_fraction=None):
 
     for filename in samples_paths:
         print_message(f"#> Loading {filename} ...")
-        part = load_index_part(filename)
+        part = load_index_part_raw(filename)
         if sample_fraction:
             part = part[torch.randint(0, high=part.size(0), size=(int(part.size(0) * sample_fraction),))]
         sample.append(part)
@@ -37,11 +35,11 @@ def load_sample(samples_paths, sample_fraction=None):
     return sample
 
 
-def prepare_faiss_index(slice_samples_paths, partitions, sample_fraction=None):
+def prepare_faiss_index(slice_samples_paths, partitions, sample_fraction=None, nbytes=16, similarity='l2'):
     training_sample = load_sample(slice_samples_paths, sample_fraction=sample_fraction)
 
     dim = training_sample.shape[-1]
-    index = FaissIndex(dim, partitions)
+    index = FaissIndex(dim=dim, partitions=partitions, nbytes=nbytes, similarity=similarity)
 
     print_message("#> Training with the vectors...")
 
@@ -59,6 +57,10 @@ def index_faiss(args):
     print_message("#> Starting..")
 
     parts, parts_paths, samples_paths = get_parts(args.index_path)
+    index_metadata = get_index_metadata(args.index_path)
+
+    if index_metadata.get('total_num_parts', None):
+        assert len(parts) == index_metadata.total_num_parts, (index_metadata.total_num_parts, parts)
 
     if args.sample is not None:
         assert args.sample, args.sample
@@ -84,13 +86,16 @@ def index_faiss(args):
 
         assert not os.path.exists(output_path), output_path
 
-        index = prepare_faiss_index(slice_samples_paths, args.partitions, args.sample)
+        faiss_nbytes = 64 if args.single_vector else 16
+        faiss_similarity = 'ip' if args.single_vector else 'l2'
+        index = prepare_faiss_index(slice_samples_paths, args.partitions, args.sample,
+                                    nbytes=faiss_nbytes, similarity=faiss_similarity)
 
         loaded_parts = queue.Queue(maxsize=1)
 
         def _loader_thread(thread_parts_paths):
             for filenames in grouper(thread_parts_paths, SPAN, fillvalue=None):
-                sub_collection = [load_index_part(filename) for filename in filenames if filename is not None]
+                sub_collection = [load_index_part_raw(filename) for filename in filenames if filename is not None]
                 sub_collection = torch.cat(sub_collection)
                 sub_collection = sub_collection.float().numpy()
                 loaded_parts.put(sub_collection)

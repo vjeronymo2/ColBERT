@@ -4,7 +4,14 @@ import ujson
 
 from math import ceil
 from itertools import accumulate
-from colbert.utils.utils import print_message
+from colbert.utils.utils import print_message, dotdict
+
+
+def get_index_metadata(directory):
+    with open(os.path.join(directory, 'metadata.json')) as f:
+        metadata = ujson.load(f)
+
+    return dotdict(metadata)
 
 
 def get_parts(directory):

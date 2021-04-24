@@ -29,7 +29,7 @@ def main():
         print("#> num_embeddings =", num_embeddings)
 
         if args.partitions is None:
-            args.partitions = 1 << math.ceil(math.log2(8 * math.sqrt(num_embeddings)))
+            args.partitions = 1 << math.ceil(math.log2(2 * math.sqrt(num_embeddings)))
             print('\n\n')
             Run.warn("You did not specify --partitions!")
             Run.warn("Default computation chooses", args.partitions,

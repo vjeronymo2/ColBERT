@@ -1,13 +1,10 @@
 import os
-import time
 import faiss
-import random
 import torch
 
 from multiprocessing import Pool
-from colbert.modeling.inference import ModelInference
 
-from colbert.utils.utils import print_message, flatten, batch
+from colbert.utils.utils import print_message, flatten
 from colbert.indexing.loaders import load_doclens
 
 

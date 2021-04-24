@@ -38,7 +38,7 @@ class CollectionEncoder():
         self.print_main(f"#> self.possible_subset_sizes = {self.possible_subset_sizes}")
 
         self._load_model()
-        self.indexmgr = IndexManager(args.dim)
+        self.indexmgr = IndexManager(args.dim, compress=args.compress, ncentroids=args.ncentroids, nvecs=args.nbytes)
         self.iterator = self._initialize_iterator()
 
     def _initialize_iterator(self):
@@ -89,6 +89,10 @@ class CollectionEncoder():
         self.print("#> Joining saver thread.")
         thread.join()
 
+        total_num_parts = batch_idx+1  # global across ranks
+
+        return total_num_parts
+
     def _batch_passages(self, fi):
         """
         Must use the same seed across processes!
@@ -124,7 +128,7 @@ class CollectionEncoder():
 
             pid, passage, *other = line_parts
 
-            assert len(passage) >= 1
+            # assert len(passage) >= 1  # NOTE: Accepting empty passages. Commented.
 
             if len(other) >= 1:
                 title, *_ = other

@@ -6,19 +6,27 @@ from math import ceil
 from itertools import accumulate
 from colbert.utils.utils import print_message, dotdict, flatten
 
-from colbert.indexing.loaders import get_parts, load_doclens
+from colbert.indexing.loaders import get_index_metadata, get_parts, load_doclens
 from colbert.indexing.index_manager import load_index_part
 from colbert.ranking.index_ranker import IndexRanker
 
+from colbert.ranking.index_tensor import IndexTensor
+from colbert.ranking.index_tensor_quantized import IndexTensorQuantized
+
 
 class IndexPart():
-    def __init__(self, directory, dim=128, part_range=None, verbose=True):
+    def __init__(self, args, directory, part_range=None, bsize=None, verbose=True, with_ranker=True):
         first_part, last_part = (0, None) if part_range is None else (part_range.start, part_range.stop)
 
         # Load parts metadata
         all_parts, all_parts_paths, _ = get_parts(directory)
         self.parts = all_parts[first_part:last_part]
         self.parts_paths = all_parts_paths[first_part:last_part]
+
+        index_metadata = get_index_metadata(directory)
+
+        if index_metadata.get('total_num_parts', None):
+            assert len(all_parts) == index_metadata.total_num_parts, (index_metadata.total_num_parts, all_parts)
 
         # Load doclens metadata
         all_doclens = load_doclens(directory, flatten=False)
@@ -31,26 +39,41 @@ class IndexPart():
         self.doclens = flatten(self.parts_doclens)
         self.num_embeddings = sum(self.doclens)
 
-        self.tensor = self._load_parts(dim, verbose)
-        self.ranker = IndexRanker(self.tensor, self.doclens)
+        self.num_parts = len(self.parts_paths)
+        self.dim = args.dim
 
-    def _load_parts(self, dim, verbose):
-        tensor = torch.zeros(self.num_embeddings + 512, dim, dtype=torch.float16)
+        self.compressed = index_metadata.compress
+        args.index_compressed = self.compressed
 
-        if verbose:
-            print_message("tensor.size() = ", tensor.size())
+        if self.compressed:
+            self.nbytes = index_metadata.get('nbytes', 32)
+            self.ncentroids = index_metadata.ncentroids
 
-        offset = 0
-        for idx, filename in enumerate(self.parts_paths):
+            self.tensor = self._load_parts_compressed(verbose)
+        else:
+            self.tensor = self._load_parts(verbose)
+
+        self.ranker = IndexRanker(args, self.tensor, self.doclens, bsize=bsize) if with_ranker else None
+
+    def _load_parts_compressed(self, verbose):
+        index_tensor = IndexTensorQuantized()
+        index_tensor.from_scratch(self.num_parts, self.num_embeddings, self.dim, self.nbytes, self.ncentroids)
+
+        for filename in self.parts_paths:
             print_message("|> Loading", filename, "...", condition=verbose)
+            load_index_part(index_tensor, filename, verbose=verbose)
 
-            endpos = offset + sum(self.parts_doclens[idx])
-            part = load_index_part(filename, verbose=verbose)
+        return index_tensor
 
-            tensor[offset:endpos] = part
-            offset = endpos
+    def _load_parts(self, verbose):
+        index_tensor = IndexTensor()
+        index_tensor.from_scratch(self.num_parts, self.num_embeddings, self.dim)
 
-        return tensor
+        for filename in self.parts_paths:
+            print_message("|> Loading", filename, "...", condition=verbose)
+            load_index_part(index_tensor, filename, verbose=verbose)
+
+        return index_tensor
 
     def pid_in_range(self, pid):
         return pid in self.pids_range

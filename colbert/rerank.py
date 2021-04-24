@@ -1,10 +1,11 @@
-import os
 import random
+import os
 
 from colbert.utils.parser import Arguments
 from colbert.utils.runs import Run
+import colbert.utils.distributed as distributed
 
-from colbert.evaluation.loaders import load_colbert, load_qrels, load_queries, load_topK_pids
+from colbert.evaluation.loaders import load_colbert, load_qrels, load_queries, load_topK_pids, load_collection
 from colbert.ranking.reranking import rerank
 from colbert.ranking.batch_reranking import batch_rerank
 
@@ -25,6 +26,8 @@ def main():
     parser.add_argument('--batch', dest='batch', default=False, action='store_true')
     parser.add_argument('--depth', dest='depth', default=1000, type=int)
 
+    parser.add_argument('--group-size', dest='group_size', default=(1 << 14), type=int)
+
     args = parser.parse()
 
     if args.part_range:
@@ -36,14 +39,20 @@ def main():
 
         args.queries = load_queries(args.queries)
         args.qrels = load_qrels(args.qrels)
-        args.topK_pids, args.qrels = load_topK_pids(args.topK, qrels=args.qrels)
+
+        if args.collection is not None:
+            args.collection = load_collection(args.collection)
 
         args.index_path = os.path.join(args.index_root, args.index_name)
+
+        args.topK_pids, args.qrels = load_topK_pids(args.topK, qrels=args.qrels)
 
         if args.batch:
             batch_rerank(args)
         else:
             rerank(args)
+
+        distributed.barrier(args.rank)
 
 
 if __name__ == "__main__":

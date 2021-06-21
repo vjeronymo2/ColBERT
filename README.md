@@ -12,7 +12,10 @@
 
 As Figure 1 illustrates, ColBERT relies on fine-grained **contextual late interaction**: it encodes each passage into a **matrix** of token-level embeddings (shown above in blue). Then at search time, it embeds every query into another matrix (shown in green) and efficiently finds passages that contextually match the query using scalable vector-similarity (`MaxSim`) operators.
 
-These rich interactions allow ColBERT to surpass the quality of _single-vector_ representation models, while scaling efficiently to large corpora. You can read more in our SIGIR 2020 paper [**ColBERT: Efficient and Effective Passage Search via Contextualized Late Interaction over BERT**](https://arxiv.org/abs/2004.12832).
+These rich interactions allow ColBERT to surpass the quality of _single-vector_ representation models, while scaling efficiently to large corpora. You can read more in our papers:
+
+* [**ColBERT: Efficient and Effective Passage Search via Contextualized Late Interaction over BERT**](https://arxiv.org/abs/2004.12832) (SIGIR'20).
+* [**Relevance-guided Supervision for OpenQA with ColBERT**](https://arxiv.org/abs/2007.00814) (TACL'21; to appear).
 
 
 ----
@@ -63,7 +66,7 @@ This works directly with the data format of the [MS MARCO Passage Ranking](https
 
 Training requires a list of _<query, positive passage, negative passage>_ tab-separated triples.
 
-You can supply **full-text** triples, where each line is `query text \t positive passage text \t negative passage text`. Alternatively, you can supply the query and passage **IDs** `qid \t pid+ \t pid-`, in which case you should specify `--collection path/to/collection.tsv` and `--queries path/to/queries.train.tsv`.
+You can supply **full-text** triples, where each line is `query text \t positive passage text \t negative passage text`. Alternatively, you can supply the query and passage **IDs** as a JSONL file `[qid, pid+, pid-]` per line, in which case you should specify `--collection path/to/collection.tsv` and `--queries path/to/queries.train.tsv`.
 
 
 ```
@@ -104,7 +107,7 @@ Example command:
 ```
 CUDA_VISIBLE_DEVICES="0,1,2,3" OMP_NUM_THREADS=6 \
 python -m torch.distributed.launch --nproc_per_node=4 -m \
-colbert.index --root /root/to/experiments/ --amp --doc_maxlen 180 --mask-punctuation --bsize 256 \
+colbert.index --amp --doc_maxlen 180 --mask-punctuation --bsize 256 \
 --checkpoint /root/to/experiments/MSMARCO-psg/train.py/msmarco.psg.l2/checkpoints/colbert-200000.dnn \
 --collection /path/to/MSMARCO/collection.tsv \
 --index_root /root/to/indexes/ --index_name MSMARCO.L2.32x200k \

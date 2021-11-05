@@ -26,7 +26,7 @@ class ColBERT(BertPreTrainedModel):
                              for w in [symbol, self.tokenizer.encode(symbol, add_special_tokens=False)[0]]}
 
         self.bert = BertModel(config)
-        self.linear = nn.Linear(config.hidden_size, dim, bias=False)
+        self.linear = nn.Linear(config.hidden_size, dim * 2, bias=False)
 
         self.init_weights()
 
@@ -37,6 +37,8 @@ class ColBERT(BertPreTrainedModel):
         input_ids, attention_mask = input_ids.to(DEVICE), attention_mask.to(DEVICE)
         Q = self.bert(input_ids, attention_mask=attention_mask)[0]
         Q = self.linear(Q)
+        Q = Q.split(int(Q.size(2)/2),2)
+        Q = torch.cat(Q,1)
 
         return torch.nn.functional.normalize(Q, p=2, dim=2)
 
@@ -44,8 +46,11 @@ class ColBERT(BertPreTrainedModel):
         input_ids, attention_mask = input_ids.to(DEVICE), attention_mask.to(DEVICE)
         D = self.bert(input_ids, attention_mask=attention_mask)[0]
         D = self.linear(D)
+        D = D.split(int(D.size(2)/2),2)
+        D = torch.cat(D,1)
 
         mask = torch.tensor(self.mask(input_ids), device=DEVICE).unsqueeze(2).float()
+        mask = torch.cat(2*[mask],1)
         D = D * mask
 
         D = torch.nn.functional.normalize(D, p=2, dim=2)

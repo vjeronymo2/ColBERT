@@ -138,7 +138,7 @@ In the simplest case, you want to retrieve from the full collection:
 ```
 python -m colbert.retrieve \
 --amp --doc_maxlen 180 --mask-punctuation --bsize 256 \
---queries /path/to/MSMARCO/queries.dev.small.tsv
+--queries /path/to/MSMARCO/queries.dev.small.tsv \
 --nprobe 32 --partitions 32768 --faiss_depth 1024 \
 --index_root /root/to/indexes/ --index_name MSMARCO.L2.32x200k \
 --checkpoint /root/to/experiments/MSMARCO-psg/train.py/msmarco.psg.l2/checkpoints/colbert-200000.dnn \
@@ -147,7 +147,7 @@ python -m colbert.retrieve \
 
 You may also want to re-rank a top-k set that you've retrieved before with ColBERT or with another model. For this, use `colbert.rerank` similarly and additionally pass `--topk`.
 
-If you have a large set of queries (or want to reduce memory usage), use **batch-mode** retrieval and/or re-ranking. This can be done by passing `--batch --only_retrieval` to `colbert.retrieve` and passing `--batch --log-scores` to colbert.rerank alongside `--topk` with the `unordered.tsv` output of this retrieval run.
+If you have a large set of queries (or want to reduce memory usage), use **batch-mode** retrieval and/or re-ranking. This can be done by passing `--batch --retrieve_only` to `colbert.retrieve` and passing `--batch --log-scores` to colbert.rerank alongside `--topk` with the `unordered.tsv` output of this retrieval run.
 
 Some use cases (e.g., building a user-facing search engines) require more control over retrieval. For those, you typically don't want to use the command line for retrieval. Instead, you want to import our retrieval API from Python and directly work with that (e.g., to build a simple REST API). Instructions for this are coming soon, but you will just need to adapt/modify the retrieval loop in [`colbert/ranking/retrieval.py#L33`](colbert/ranking/retrieval.py#L33).
 

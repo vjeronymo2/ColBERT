@@ -74,7 +74,7 @@ CUDA_VISIBLE_DEVICES="0,1,2,3" \
 python -m torch.distributed.launch --nproc_per_node=4 -m \
 colbert.train --amp --doc_maxlen 180 --mask-punctuation --bsize 32 --accum 1 \
 --triples /path/to/MSMARCO/triples.train.small.tsv \
---root /root/to/experiments/ --experiment MSMARCO-psg --similarity cosine --run msmarco.psg.l2 --dim 32
+--root /root/to/experiments/ --experiment MSMARCO-psg --similarity cosine --run msmarco.psg.cosine --dim 32
 ```
 
 You can use one or more GPUs by modifying `CUDA_VISIBLE_DEVICES` and `--nproc_per_node`.
@@ -93,7 +93,7 @@ python -m colbert.test --amp --doc_maxlen 180 --mask-punctuation \
 --collection /path/to/MSMARCO/collection.tsv \
 --queries /path/to/MSMARCO/queries.dev.small.tsv \
 --topk /path/to/MSMARCO/top1000.dev  \
---checkpoint /root/to/experiments/MSMARCO-psg/train.py/msmarco.psg.l2/checkpoints/colbert-400000.dnn \
+--checkpoint /root/to/experiments/MSMARCO-psg/train.py/msmarco.psg.cosine/checkpoints/colbert-400000.dnn \
 --root /root/to/experiments/ --experiment MSMARCO-psg  [--qrels path/to/qrels.dev.small.tsv] --dim 32
 ```
 
@@ -108,9 +108,9 @@ Example command:
 CUDA_VISIBLE_DEVICES="0,1,2,3" OMP_NUM_THREADS=6 \
 python -m torch.distributed.launch --nproc_per_node=4 -m \
 colbert.index --amp --doc_maxlen 180 --mask-punctuation --bsize 256 \
---checkpoint /root/to/experiments/MSMARCO-psg/train.py/msmarco.psg.l2/checkpoints/colbert-400000.dnn \
+--checkpoint /root/to/experiments/MSMARCO-psg/train.py/msmarco.psg.cosine/checkpoints/colbert-400000.dnn \
 --collection /path/to/MSMARCO/collection.tsv \
---index_root /root/to/indexes/ --index_name MSMARCO.L2.32x400k \
+--index_root /root/to/indexes/ --index_name MSMARCO.cosine.32x400k \
 --root /root/to/experiments/ --experiment MSMARCO-psg --dim 32
 ```
 
@@ -125,7 +125,7 @@ For end-to-end retrieval, you should index the document representations into [FA
 
 ```
 python -m colbert.index_faiss \
---index_root /root/to/indexes/ --index_name MSMARCO.L2.32x400k \
+--index_root /root/to/indexes/ --index_name MSMARCO.cosine.32x400k \
 --partitions 131072 --sample 0.3 \
 --root /root/to/experiments/ --experiment MSMARCO-psg
 ```
@@ -140,8 +140,8 @@ python -m colbert.retrieve \
 --amp --doc_maxlen 180 --mask-punctuation --bsize 256 \
 --queries /path/to/MSMARCO/queries.dev.small.tsv \
 --nprobe 32 --partitions 131072 --faiss_depth 1024 \
---index_root /root/to/indexes/ --index_name MSMARCO.L2.32x400k \
---checkpoint /root/to/experiments/MSMARCO-psg/train.py/msmarco.psg.l2/checkpoints/colbert-400000.dnn \
+--index_root /root/to/indexes/ --index_name MSMARCO.cosine.32x400k \
+--checkpoint /root/to/experiments/MSMARCO-psg/train.py/msmarco.psg.cosine/checkpoints/colbert-400000.dnn \
 --root /root/to/experiments/ --experiment MSMARCO-psg
 ```
 

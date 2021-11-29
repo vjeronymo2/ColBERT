@@ -142,7 +142,7 @@ python -m colbert.retrieve \
 --nprobe 32 --partitions 131072 --faiss_depth 1024 \
 --index_root /root/to/indexes/ --index_name MSMARCO.cosine.32x400k \
 --checkpoint /root/to/experiments/MSMARCO-psg/train.py/msmarco.psg.cosine/checkpoints/colbert-400000.dnn \
---root /root/to/experiments/ --experiment MSMARCO-psg
+--root /root/to/experiments/ --experiment MSMARCO-psg --similarity cosine
 ```
 
 You may also want to re-rank a top-k set that you've retrieved before with ColBERT or with another model. For this, use `colbert.rerank` similarly and additionally pass `--topk`.

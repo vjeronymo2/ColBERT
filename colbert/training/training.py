@@ -40,7 +40,7 @@ def train(args):
     if args.rank not in [-1, 0]:
         torch.distributed.barrier()
 
-    colbert = ColBERT.from_pretrained('bert-base-uncased',
+    colbert = ColBERT.from_pretrained('bert-base-multilingual-uncased',
                                       query_maxlen=args.query_maxlen,
                                       doc_maxlen=args.doc_maxlen,
                                       dim=args.dim,

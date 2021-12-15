@@ -19,7 +19,7 @@ class QueryTokenizer():
         self.sep_token, self.sep_token_id = self.tok.sep_token, self.tok.sep_token_id
         self.mask_token, self.mask_token_id = self.tok.mask_token, self.tok.mask_token_id
 
-        assert self.Q_marker_token_id == 1 and self.mask_token_id == 103
+        assert self.Q_marker_token_id == 100 and self.mask_token_id == 103
         self.used = False
 
     def tokenize(self, batch_text, add_special_tokens=False):

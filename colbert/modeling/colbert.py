@@ -12,7 +12,7 @@ class ColBERT(BaseColBERT):
         This class handles the basic encoding and scoring operations in ColBERT. It is used for training.
     """
 
-    def __init__(self, name='bert-base-uncased', colbert_config=None):
+    def __init__(self, name='bert-base-multilingual-uncased', colbert_config=None):
         super().__init__(name, colbert_config)
 
         if self.colbert_config.mask_punctuation:
@@ -56,8 +56,11 @@ class ColBERT(BaseColBERT):
         input_ids, attention_mask = input_ids.to(self.device), attention_mask.to(self.device)
         Q = self.bert(input_ids, attention_mask=attention_mask)[0]
         Q = self.linear(Q)
+        Q = Q.split(int(Q.size(2)/2),2)
+        Q = torch.cat(Q,1)
 
         mask = torch.tensor(self.mask(input_ids, skiplist=[]), device=self.device).unsqueeze(2).float()
+        mask = torch.cat(2*[mask],1)
         Q = Q * mask
 
         return torch.nn.functional.normalize(Q, p=2, dim=2)
@@ -68,8 +71,11 @@ class ColBERT(BaseColBERT):
         input_ids, attention_mask = input_ids.to(self.device), attention_mask.to(self.device)
         D = self.bert(input_ids, attention_mask=attention_mask)[0]
         D = self.linear(D)
+        D = D.split(int(D.size(2)/2),2)
+        D = torch.cat(D,1)
 
         mask = torch.tensor(self.mask(input_ids, skiplist=self.skiplist), device=self.device).unsqueeze(2).float()
+        mask = torch.cat(2*[mask],1)
         D = D * mask
 
         D = torch.nn.functional.normalize(D, p=2, dim=2).half()

@@ -17,7 +17,7 @@ class HF_ColBERT(BertPreTrainedModel):
 
         self.dim = colbert_config.dim
         self.bert = BertModel(config)
-        self.linear = nn.Linear(config.hidden_size, colbert_config.dim, bias=False)
+        self.linear = nn.Linear(config.hidden_size, colbert_config.dim * 2, bias=False)
 
         # if colbert_config.relu:
         #     self.score_scaler = nn.Linear(1, 1)
@@ -32,7 +32,7 @@ class HF_ColBERT(BertPreTrainedModel):
     def from_pretrained(cls, name_or_path, colbert_config):
         if name_or_path.endswith('.dnn'):
             dnn = torch_load_dnn(name_or_path)
-            base = dnn.get('arguments', {}).get('model', 'bert-base-uncased')
+            base = dnn.get('arguments', {}).get('model', 'bert-base-multilingual-uncased')
 
             obj = super().from_pretrained(base, state_dict=dnn['model_state_dict'], colbert_config=colbert_config)
             obj.base = base
@@ -48,7 +48,7 @@ class HF_ColBERT(BertPreTrainedModel):
     def raw_tokenizer_from_pretrained(name_or_path):
         if name_or_path.endswith('.dnn'):
             dnn = torch_load_dnn(name_or_path)
-            base = dnn.get('arguments', {}).get('model', 'bert-base-uncased')
+            base = dnn.get('arguments', {}).get('model', 'bert-base-multilingual-uncased')
 
             obj = AutoTokenizer.from_pretrained(base)
             obj.base = base

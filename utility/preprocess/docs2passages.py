@@ -100,7 +100,7 @@ def main(args):
     tokenizer = None
     if args.use_wordpiece:
         from transformers import BertTokenizerFast
-        tokenizer = BertTokenizerFast.from_pretrained('bert-base-uncased')
+        tokenizer = BertTokenizerFast.from_pretrained('bert-base-multilingual-uncased')
 
     process_page_params = [(args.nwords, args.overlap, tokenizer)] * len(RawCollection)
     Collection = p.map(process_page, zip(process_page_params, RawCollection))

@@ -63,7 +63,7 @@ if __name__ == '__main__':
     torch.manual_seed(12345)
 
     with Run().context(RunConfig(gpus=2)):
-        m = BaseColBERT('bert-base-uncased', colbert_config=ColBERTConfig(Run().config, doc_maxlen=300, similarity='l2'))
+        m = BaseColBERT('bert-base-multilingual-uncased', colbert_config=ColBERTConfig(Run().config, doc_maxlen=300, similarity='l2'))
         m.colbert_config.help()
         print(m.linear.weight)
         m.save('/future/u/okhattab/tmp/2021/08/model.deleteme2/')
